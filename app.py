@@ -11,6 +11,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 import sys
 import logging
+import gc
 
 
 def daily_task():
@@ -111,6 +112,10 @@ async def get_all_movies_with_runtime():
                 app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
         except:
             app.logger.info("error getting response, movie link: "+ str(movie_link))
+        finally:
+            response.close()
+            gc.collect()
+
         # if limit<=0:
         #     break
         # limit-=1
@@ -140,12 +145,6 @@ def calculate_end_time(start_time_str:str, runtime:list):
 
 
 def get_auditorium_details(path:str,movie_run_times: defaultdict[str, list[int]]):
-    response = requests.get(main_movie_url+path)
-    if response.status_code!=200:
-        app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
-        return ['','query failed',path,0,"01:00 AM",[0,0],'01:00 AM']
-    html_content = response.text
-    soup = BeautifulSoup(html_content, 'html.parser')
     movie_name=""
     auditorium_number="query failed"
     start_time = "01:00"
@@ -153,29 +152,42 @@ def get_auditorium_details(path:str,movie_run_times: defaultdict[str, list[int]]
     end_time = '01:00 AM'
     seats_unavailable = 0
     try:
-        movie_name = str(soup.find(class_='seats-tickets-title').text.strip())
+        response = requests.get(main_movie_url+path)
+        if response.status_code!=200:
+            app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+            return ['','query failed',path,0,"01:00 AM",[0,0],'01:00 AM']
+        html_content = response.text
+        soup = BeautifulSoup(html_content, 'html.parser')
+        try:
+            movie_name = str(soup.find(class_='seats-tickets-title').text.strip())
+        except:
+            app.logger.info("getting movie name failed")
+        try:
+            auditorium_number= str(soup.find(class_='auditoriumNumber').text.strip())
+        except:
+            app.logger.info("getting auditorium number failed")
+        try:
+            start_time = str(soup.find(class_='seats-tickets-time').text.strip())
+            run_time =movie_run_times[movie_name]
+            end_time = calculate_end_time(start_time,run_time)
+        except:
+            app.logger.info("getting times failed")
+        try:
+            seat_map = soup.find(class_='seatMap')
+            seats_unavailable = len(seat_map.find_all(class_='seatUnavailable seatBlock'))
+        except:
+            app.logger.info("getting seats failed")
+        app.logger.info(start_time)
+        app.logger.info(movie_name)
+        app.logger.info(auditorium_number)
+        app.logger.info(seats_unavailable)
     except:
-        app.logger.info("getting movie name failed")
-    try:
-        auditorium_number= str(soup.find(class_='auditoriumNumber').text.strip())
-    except:
-        app.logger.info("getting auditorium number failed")
-    try:
-        start_time = str(soup.find(class_='seats-tickets-time').text.strip())
-        run_time =movie_run_times[movie_name]
-        end_time = calculate_end_time(start_time,run_time)
-    except:
-        app.logger.info("getting times failed")
-    try:
-        seat_map = soup.find(class_='seatMap')
-        seats_unavailable = len(seat_map.find_all(class_='seatUnavailable seatBlock'))
-    except:
-        app.logger.info("getting seats failed")
-    app.logger.info(start_time)
-    app.logger.info(movie_name)
-    app.logger.info(auditorium_number)
-    app.logger.info(seats_unavailable)
+        app.logger.info("trouble with path: "+ path)
+    finally:
+            response.close()
+            gc.collect()
     return [movie_name,auditorium_number,path,seats_unavailable,start_time,run_time,end_time]
+    
 
 def update_movie(path):
     global movie_showings
