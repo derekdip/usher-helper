@@ -27,7 +27,7 @@ def daily_task():
         print(hour)
         print(minute)
         print(showing[2])
-        fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour-2, minute=(minute-7)%60)
+        fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour, minute=minute)
     fresh_data_scheduler.start()
 
 
