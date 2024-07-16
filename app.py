@@ -9,6 +9,8 @@ import time
 import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from __future__ import print_function # In python 2.7
+import sys
 
 
 def daily_task():
@@ -23,10 +25,10 @@ def daily_task():
     for showing in movie_showings:
         formatted_time = parse_and_format_time(showing[4])
         hour, minute = map(int, formatted_time.split(':'))
-        print(formatted_time)
-        print(hour)
-        print(minute)
-        print(showing[2])
+        print(formatted_time, file=sys.stderr)
+        print(hour, file=sys.stderr)
+        print(minute, file=sys.stderr)
+        print(showing[2], file=sys.stderr)
         fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour, minute=minute)
     fresh_data_scheduler.start()
 
@@ -83,7 +85,7 @@ def get_all_movies_with_runtime():
     response = requests.get(main_movie_url+"/movies/now-playing")
     movie_runtime_dict = defaultdict(default_arr)
     if response.status_code!=200:
-        print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+        print(f"Failed to retrieve the webpage. Status code: {response.status_code}", file=sys.stderr)
         return movie_runtime_dict
     html_content = response.text
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -98,13 +100,13 @@ def get_all_movies_with_runtime():
             soup = BeautifulSoup(html_content, 'html.parser')
             movie_name_element = soup.find_all(class_='movie-detail-title')
             movie_name= get_movie_name(movie_name_element)
-            print(movie_name)
+            print(movie_name, file=sys.stderr)
             # Extract elements with a specific class
             movie_runtime_element = soup.find_all(class_='movie-detail-runtime')
             hours_minutes = get_movie_hours_minutes(movie_runtime_element)
             movie_runtime_dict[movie_name]=hours_minutes
         else:
-            print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+            print(f"Failed to retrieve the webpage. Status code: {response.status_code}", file=sys.stderr)
         # if limit<=0:
         #     break
         # limit-=1
@@ -113,7 +115,7 @@ def get_all_movie_start_times():
     response = requests.get(target_theatre_url)
     movies_playing_dict =defaultdict(list)
     if response.status_code!=200:
-        print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+        print(f"Failed to retrieve the webpage. Status code: {response.status_code}", file=sys.stderr)
         return movies_playing_dict
     html_content = response.text
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -148,16 +150,16 @@ def calculate_end_time(start_time_str:str, runtime:list):
     # Step 4: Format the end time as a string if needed
     end_time_str = end_time.strftime("%I:%M %p")
 
-    print("Start Time:", start_time_str)
-    print("Runtime:", runtime[0], "hours and", runtime[1], "minutes")
-    print("End Time:", end_time_str)
+    print("Start Time:", start_time_str, file=sys.stderr)
+    print("Runtime:", runtime[0], "hours and", runtime[1], "minutes", file=sys.stderr)
+    print("End Time:", end_time_str, file=sys.stderr)
     return end_time_str
 
 
 def get_auditorium_details(path:str,movie_run_times: defaultdict[str, list[int]]):
     response = requests.get(main_movie_url+path)
     if response.status_code!=200:
-        print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+        print(f"Failed to retrieve the webpage. Status code: {response.status_code}", file=sys.stderr)
         return ['','query failed',path,0,"01:00 AM",[0,0],'01:00 AM']
     html_content = response.text
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -170,26 +172,26 @@ def get_auditorium_details(path:str,movie_run_times: defaultdict[str, list[int]]
     try:
         movie_name = str(soup.find(class_='seats-tickets-title').text.strip())
     except:
-        print("getting movie name failed")
+        print("getting movie name failed", file=sys.stderr)
     try:
         auditorium_number= str(soup.find(class_='auditoriumNumber').text.strip())
     except:
-        print("getting auditorium number failed")
+        print("getting auditorium number failed", file=sys.stderr)
     try:
         start_time = str(soup.find(class_='seats-tickets-time').text.strip())
         run_time =movie_run_times[movie_name]
         end_time = calculate_end_time(start_time,run_time)
     except:
-        print("getting times failed")
+        print("getting times failed", file=sys.stderr)
     try:
         seat_map = soup.find(class_='seatMap')
         seats_unavailable = len(seat_map.find_all(class_='seatUnavailable seatBlock'))
     except:
-        print("getting seats failed")
-    print(start_time)
-    print(movie_name)
-    print(auditorium_number)
-    print(seats_unavailable)
+        print("getting seats failed", file=sys.stderr)
+    print(start_time, file=sys.stderr)
+    print(movie_name, file=sys.stderr)
+    print(auditorium_number, file=sys.stderr)
+    print(seats_unavailable, file=sys.stderr)
     return [movie_name,auditorium_number,path,seats_unavailable,start_time,run_time,end_time]
 
 def update_movie(path):
@@ -197,9 +199,9 @@ def update_movie(path):
     latest_movie_showing_details = get_auditorium_details(path,all_movie_run_times)
     for i in range(len(movie_showings)):
         if movie_showings[i][2]==path:
-            print(movie_showings[i])
-            print('updating latest')
-            print(latest_movie_showing_details)
+            print(movie_showings[i], file=sys.stderr)
+            print('updating latest', file=sys.stderr)
+            print(latest_movie_showing_details, file=sys.stderr)
             for j in range(len(movie_showings[i])):
                 movie_showings[i][j]=latest_movie_showing_details[j]
     return latest_movie_showing_details
@@ -219,7 +221,7 @@ async def get_all_movie_showings(all_movie_run_times: dict[str, list[int]]):
     response = requests.get(target_theatre_url)
     movies = []
     if response.status_code!=200:
-        print(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+        print(f"Failed to retrieve the webpage. Status code: {response.status_code}", file=sys.stderr)
         return movies
     html_content = response.text
     soup = BeautifulSoup(html_content, 'html.parser')
@@ -235,7 +237,7 @@ async def get_all_movie_showings(all_movie_run_times: dict[str, list[int]]):
         #     break
         # limit-=1
     sorted_times_list = sorted(movies, key=lambda x: convert_time_to_datetime(x[6]))
-    print(sorted_times_list)
+    print(sorted_times_list, file=sys.stderr)
     return sorted_times_list
 
 
