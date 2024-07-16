@@ -123,6 +123,8 @@ def calculate_end_time(start_time_str:str, runtime:list):
     # start_time_str = "11:15 am"
     # runtime = [2, 30]  # 2 hours and 30 minutes
 
+    app.logger.info(start_time)
+    app.logger.info(runtime)
     # Step 1: Parse the start time string into a datetime object
     start_time = datetime.strptime(start_time_str, "%I:%M %p")
 
@@ -166,6 +168,8 @@ def get_auditorium_details(path:str):
             app.logger.info("getting auditorium number failed")
         try:
             start_time = str(soup.find(class_='seats-tickets-time').text.strip())
+            app.logger.info(movie_name)
+            app.logger.info(all_movie_run_times[movie_name])
             run_time = all_movie_run_times[movie_name]
             end_time = calculate_end_time(start_time,run_time)
         except:
