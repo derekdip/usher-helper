@@ -10,6 +10,13 @@ import logging
 import gc
 
 
+
+all_movie_run_times=defaultdict(list)
+movie_showings=[]
+daily_scheduler:BackgroundScheduler = BackgroundScheduler()
+fresh_data_scheduler:BackgroundScheduler  = BackgroundScheduler()
+daily_scheduler_initialized = False
+
 def daily_task():
     global all_movie_run_times
     global movie_showings
@@ -30,12 +37,6 @@ def daily_task():
     fresh_data_scheduler.start()
 
 
-
-all_movie_run_times=defaultdict(list)
-movie_showings=[]
-daily_scheduler:BackgroundScheduler = BackgroundScheduler()
-fresh_data_scheduler:BackgroundScheduler  = BackgroundScheduler()
-daily_scheduler_initialized = False
 
 # Fetch the HTML content
 
@@ -140,7 +141,8 @@ def calculate_end_time(start_time_str:str, runtime:list):
     return end_time_str
 
 
-def get_auditorium_details(path:str,movie_run_times: defaultdict[str, list[int]]):
+def get_auditorium_details(path:str):
+    global all_movie_run_times
     movie_name=""
     auditorium_number="query failed"
     start_time = "01:00"
@@ -164,7 +166,7 @@ def get_auditorium_details(path:str,movie_run_times: defaultdict[str, list[int]]
             app.logger.info("getting auditorium number failed")
         try:
             start_time = str(soup.find(class_='seats-tickets-time').text.strip())
-            run_time =movie_run_times[movie_name]
+            run_time = all_movie_run_times[movie_name]
             end_time = calculate_end_time(start_time,run_time)
         except:
             app.logger.info("getting times failed")
@@ -187,7 +189,7 @@ def get_auditorium_details(path:str,movie_run_times: defaultdict[str, list[int]]
 
 def update_movie(path):
     global movie_showings
-    latest_movie_showing_details = get_auditorium_details(path,all_movie_run_times)
+    latest_movie_showing_details = get_auditorium_details(path)
     for i in range(len(movie_showings)):
         if movie_showings[i][2]==path:
             app.logger.info(movie_showings[i])
@@ -208,7 +210,8 @@ def parse_and_format_time(input_time, output_format="%H:%M"):
     
     return formatted_time
 
-async def get_all_movie_showings(all_movie_run_times: dict[str, list[int]]):
+async def get_all_movie_showings():
+    global all_movie_run_times
     response = requests.get(target_theatre_url)
     movies = []
     if response.status_code!=200:
@@ -221,7 +224,7 @@ async def get_all_movie_showings(all_movie_run_times: dict[str, list[int]]):
     # limit = 2
     for showtime_path in hrefs:
         path= str(showtime_path)
-        auditorium= get_auditorium_details(path,all_movie_run_times)
+        auditorium= get_auditorium_details(path)
         movies.append(auditorium)
         await asyncio.sleep(10)
         # if limit<=0:
