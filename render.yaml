@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: usher-helper
+    env: python
+    plan: Starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
