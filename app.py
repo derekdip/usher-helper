@@ -93,20 +93,23 @@ def get_all_movies_with_runtime():
     hrefs = [a.get('href') for a in anchor_tags if a.get('href')]
     # limit =4
     for movie_link in hrefs:
-        response = requests.get(main_movie_url+str(movie_link))
-        if response.status_code == 200:
-            html_content = response.text
-            # Parse the HTML
-            soup = BeautifulSoup(html_content, 'html.parser')
-            movie_name_element = soup.find_all(class_='movie-detail-title')
-            movie_name= get_movie_name(movie_name_element)
-            app.logger.info(movie_name)
-            # Extract elements with a specific class
-            movie_runtime_element = soup.find_all(class_='movie-detail-runtime')
-            hours_minutes = get_movie_hours_minutes(movie_runtime_element)
-            movie_runtime_dict[movie_name]=hours_minutes
-        else:
-            app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+        try:
+            response = requests.get(main_movie_url+str(movie_link))
+            if response.status_code == 200:
+                html_content = response.text
+                # Parse the HTML
+                soup = BeautifulSoup(html_content, 'html.parser')
+                movie_name_element = soup.find_all(class_='movie-detail-title')
+                movie_name= get_movie_name(movie_name_element)
+                app.logger.info(movie_name)
+                # Extract elements with a specific class
+                movie_runtime_element = soup.find_all(class_='movie-detail-runtime')
+                hours_minutes = get_movie_hours_minutes(movie_runtime_element)
+                movie_runtime_dict[movie_name]=hours_minutes
+            else:
+                app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
+        except:
+            app.logger.info("error getting response, movie link: "+ str(movie_link))
         # if limit<=0:
         #     break
         # limit-=1
