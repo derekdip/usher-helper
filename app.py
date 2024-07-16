@@ -29,7 +29,7 @@ def daily_task():
         app.logger.info(hour, file=sys.stderr)
         app.logger.info(minute, file=sys.stderr)
         app.logger.info(showing[2], file=sys.stderr)
-        fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour, minute=minute,timezone='America/California')
+        fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour, minute=minute,timezone='America/Los_Angeles')
     fresh_data_scheduler.start()
 
 
@@ -288,7 +288,7 @@ def get_data_with_name():
     global daily_scheduler
     job_count = len(daily_scheduler.get_jobs())
     if job_count==0:
-        daily_scheduler.add_job(daily_task, CronTrigger(hour=20, minute=50,timezone='America/California'))
+        daily_scheduler.add_job(daily_task, CronTrigger(hour=20, minute=55,timezone='America/Los_Angeles'))
         daily_scheduler.start()
     return "hello"
 
