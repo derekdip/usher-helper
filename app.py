@@ -123,7 +123,7 @@ def calculate_end_time(start_time_str:str, runtime:list):
     # start_time_str = "11:15 am"
     # runtime = [2, 30]  # 2 hours and 30 minutes
 
-    app.logger.info(start_time)
+    app.logger.info(start_time_str)
     app.logger.info(runtime)
     # Step 1: Parse the start time string into a datetime object
     start_time = datetime.strptime(start_time_str, "%I:%M %p")
@@ -138,7 +138,7 @@ def calculate_end_time(start_time_str:str, runtime:list):
     end_time_str = end_time.strftime("%I:%M %p")
 
     app.logger.info("Start Time:"+ start_time_str)
-    app.logger.info("Runtime:"+ runtime[0]+ "hours and"+ runtime[1]+ "minutes")
+    app.logger.info(f"Runtime: {runtime[0]} hours and {runtime[1]} minutes")
     app.logger.info("End Time:"+ end_time_str)
     return end_time_str
 
