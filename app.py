@@ -25,7 +25,7 @@ def daily_task():
         fresh_data_scheduler.remove_all_jobs()
         fresh_data_scheduler.shutdown()
     all_movie_run_times =  asyncio.run(get_all_movies_with_runtime())
-    movie_showings = asyncio.run(get_all_movie_showings(all_movie_run_times))
+    movie_showings = asyncio.run(get_all_movie_showings())
     for showing in movie_showings:
         formatted_time = parse_and_format_time(showing[4])
         hour, minute = map(int, formatted_time.split(':'))
