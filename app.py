@@ -1,3 +1,4 @@
+from __future__ import print_function # In python 2.7
 import requests
 from bs4 import BeautifulSoup
 from collections import defaultdict
@@ -9,7 +10,6 @@ import time
 import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-from __future__ import print_function # In python 2.7
 import sys
 
 
