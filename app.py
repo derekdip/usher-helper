@@ -20,7 +20,7 @@ def daily_task():
     if fresh_data_scheduler.running:
         fresh_data_scheduler.remove_all_jobs()
         fresh_data_scheduler.shutdown()
-    all_movie_run_times = get_all_movies_with_runtime()
+    all_movie_run_times =  asyncio.run(get_all_movies_with_runtime())
     movie_showings = asyncio.run(get_all_movie_showings(all_movie_run_times))
     for showing in movie_showings:
         formatted_time = parse_and_format_time(showing[4])
@@ -81,7 +81,7 @@ def get_movie_hours_minutes(elements):
                 numsString+=char
                 lastCharIsDigit=True
     return nums
-def get_all_movies_with_runtime():
+async def get_all_movies_with_runtime():
     response = requests.get(main_movie_url+"/movies/now-playing")
     movie_runtime_dict = defaultdict(default_arr)
     if response.status_code!=200:
@@ -106,6 +106,7 @@ def get_all_movies_with_runtime():
                 movie_runtime_element = soup.find_all(class_='movie-detail-runtime')
                 hours_minutes = get_movie_hours_minutes(movie_runtime_element)
                 movie_runtime_dict[movie_name]=hours_minutes
+                await asyncio.sleep(3)
             else:
                 app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
         except:
@@ -114,27 +115,6 @@ def get_all_movies_with_runtime():
         #     break
         # limit-=1
     return movie_runtime_dict
-def get_all_movie_start_times():
-    response = requests.get(target_theatre_url)
-    movies_playing_dict =defaultdict(list)
-    if response.status_code!=200:
-        app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
-        return movies_playing_dict
-    html_content = response.text
-    soup = BeautifulSoup(html_content, 'html.parser')
-    movies_playing_today_elements= soup.find_all(class_='showtimeMovie')
-    movie_name=""
-    movie_start_times =[]
-    for movie_element in movies_playing_today_elements:
-        movie_name = movie_element.find('h3').text.strip()
-        times =movie_element.find_all(class_='showtime-link')
-        #   app.logger.info(movie_name)
-        for time in times:
-            movie_start_times.append(str(time.text.strip()))
-            #   app.logger.info(time.text.strip())
-        movies_playing_dict[str(movie_name)] = movie_start_times
-        movie_start_times =[]
-    return movies_playing_dict
         
 #start_time:str, duration:list
 def calculate_end_time(start_time_str:str, runtime:list):
