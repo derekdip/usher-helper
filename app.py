@@ -288,7 +288,8 @@ def get_data_with_name():
     global daily_scheduler
     job_count = len(daily_scheduler.get_jobs())
     if job_count==0:
-        daily_scheduler.add_job(daily_task, CronTrigger(hour=21, minute=2,timezone='America/Los_Angeles'))
+        daily_task()
+        daily_scheduler.add_job(daily_task, CronTrigger(hour=3, minute=0,timezone='America/Los_Angeles'))
         daily_scheduler.start()
     return "hello"
 
