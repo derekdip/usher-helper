@@ -4,12 +4,8 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 import asyncio
 from flask import Flask, request, jsonify
-import schedule
-import time
-import threading
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
-import sys
 import logging
 import gc
 
