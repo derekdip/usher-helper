@@ -134,9 +134,9 @@ def calculate_end_time(start_time_str:str, runtime:list):
     # Step 4: Format the end time as a string if needed
     end_time_str = end_time.strftime("%I:%M %p")
 
-    app.logger.info("Start Time:", start_time_str)
-    app.logger.info("Runtime:", runtime[0], "hours and", runtime[1], "minutes")
-    app.logger.info("End Time:", end_time_str)
+    app.logger.info("Start Time:"+ start_time_str)
+    app.logger.info("Runtime:"+ runtime[0]+ "hours and"+ runtime[1]+ "minutes")
+    app.logger.info("End Time:"+ end_time_str)
     return end_time_str
 
 
