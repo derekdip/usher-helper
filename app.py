@@ -23,7 +23,9 @@ def daily_task():
     global fresh_data_scheduler
     if fresh_data_scheduler.running:
         fresh_data_scheduler.remove_all_jobs()
-        fresh_data_scheduler.shutdown()
+        fresh_data_scheduler.shutdown(wait=False)
+        fresh_data_scheduler.start()
+
     all_movie_run_times =  asyncio.run(get_all_movies_with_runtime())
     movie_showings = asyncio.run(get_all_movie_showings())
     for showing in movie_showings:
@@ -34,7 +36,6 @@ def daily_task():
         app.logger.info(minute)
         app.logger.info(showing[2])
         fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour, minute=minute,timezone='America/Los_Angeles')
-    fresh_data_scheduler.start()
 
 
 
@@ -129,7 +130,7 @@ def calculate_end_time(start_time_str:str, runtime:list):
     start_time = datetime.strptime(start_time_str, "%I:%M %p")
 
     # Step 2: Create a timedelta object for the runtime
-    runtime_delta = timedelta(hours=runtime[0], minutes=runtime[1])
+    runtime_delta = timedelta(hours=runtime[0], minutes=runtime[1]+20)
 
     # Step 3: Calculate the end time by adding the runtime to the start time
     end_time = start_time + runtime_delta
