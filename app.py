@@ -25,6 +25,8 @@ def daily_task():
         fresh_data_scheduler.remove_all_jobs()
         fresh_data_scheduler.shutdown(wait=False)
         fresh_data_scheduler.start()
+    else:
+        fresh_data_scheduler.start()
 
     all_movie_run_times =  asyncio.run(get_all_movies_with_runtime())
     movie_showings = asyncio.run(get_all_movie_showings())
