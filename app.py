@@ -57,7 +57,10 @@ def get_movie_name(elements):
     has_name_started=False
     has_name_ended=False
     movie_name=""
+
     for element in elements:
+        str_name =str(element)
+        str_name = str_name.replace("&amp;","&")
         for char in str(element):
             if has_name_started and char=='<':
                 has_name_ended = True
@@ -132,7 +135,7 @@ def calculate_end_time(start_time_str:str, runtime:list):
     start_time = datetime.strptime(start_time_str, "%I:%M %p")
 
     # Step 2: Create a timedelta object for the runtime
-    runtime_delta = timedelta(hours=runtime[0], minutes=runtime[1]+20)
+    runtime_delta = timedelta(hours=runtime[0], minutes=runtime[1]+25)
 
     # Step 3: Calculate the end time by adding the runtime to the start time
     end_time = start_time + runtime_delta
