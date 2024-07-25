@@ -103,8 +103,8 @@ async def get_all_movies_with_runtime():
                 html_content = response.text
                 # Parse the HTML
                 soup = BeautifulSoup(html_content, 'html.parser')
-                movie_name_element = soup.find_all(class_='movie-detail-title')
-                movie_name= get_movie_name(movie_name_element)
+                movie_name_element = soup.find(class_='movie-detail-title')
+                movie_name= str(movie_name_element.text.strip())
                 app.logger.info(movie_name)
                 # Extract elements with a specific class
                 movie_runtime_element = soup.find_all(class_='movie-detail-runtime')
