@@ -31,13 +31,16 @@ def daily_task():
     all_movie_run_times =  asyncio.run(get_all_movies_with_runtime())
     movie_showings = asyncio.run(get_all_movie_showings())
     for showing in movie_showings:
-        formatted_time = parse_and_format_time(showing[4])
-        hour, minute = map(int, formatted_time.split(':'))
-        app.logger.info(formatted_time)
-        app.logger.info(hour)
-        app.logger.info(minute)
-        app.logger.info(showing[2])
-        fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour, minute=minute,timezone='America/Los_Angeles')
+        try:
+            formatted_time = parse_and_format_time(showing[4])
+            hour, minute = map(int, formatted_time.split(':'))
+            app.logger.info(formatted_time)
+            app.logger.info(hour)
+            app.logger.info(minute)
+            app.logger.info(showing[2])
+            fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour, minute=minute,timezone='America/Los_Angeles')
+        except:
+            app.logger.info("an error occurred parsing time for movie update scheduler")
 
 
 
