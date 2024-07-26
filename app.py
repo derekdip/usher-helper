@@ -23,8 +23,6 @@ def daily_task():
     global fresh_data_scheduler
     if fresh_data_scheduler.running:
         fresh_data_scheduler.remove_all_jobs()
-        fresh_data_scheduler.shutdown(wait=False)
-        fresh_data_scheduler.start()
     else:
         fresh_data_scheduler.start()
 
