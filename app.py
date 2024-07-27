@@ -215,7 +215,7 @@ def convert_time_to_datetime(time_str):
 def parse_and_format_time(input_time, output_format="%H:%M"):
     # Parse the input time string
     dt = datetime.strptime(input_time, "%I:%M %p")
-    
+    dt+= timedelta(minutes=15)
     # Format the datetime object to the desired format
     formatted_time = dt.strftime(output_format)
     
