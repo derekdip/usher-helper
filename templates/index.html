@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movie Showtimes</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Movie Showtimes</h1>
+        <div class="row">
+            {% for item in items %}
+                <div class="col-md-4 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ item.movie_name }}</h5>
+                            <p class="card-text"><strong>Auditorium:</strong> {{ item.auditorium_number }}</p>
+                            <p class="card-text"><strong>Start Time:</strong> {{ item.start_time }}</p>
+                            <p class="card-text"><strong>End Time:</strong> {{ item.end_time }}</p>
+                            <p class="card-text"><strong>Seats Unavailable:</strong> {{ item.seats_unavailable }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
