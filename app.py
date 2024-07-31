@@ -13,6 +13,7 @@ import gc
 
 all_movie_run_times=defaultdict(list)
 movie_showings=[]
+formatted_movies = []
 daily_scheduler:BackgroundScheduler = BackgroundScheduler()
 fresh_data_scheduler:BackgroundScheduler  = BackgroundScheduler()
 daily_scheduler_initialized = False
@@ -269,6 +270,7 @@ def home():
 def get_all_movie_run_times():
     # Example data
     global movie_showings
+    global formatted_movies 
     formatted_movies = []
     for movie in movie_showings:
         details ={
@@ -320,8 +322,9 @@ def get_latest_auditorium_details():
 
 @app.route('/api/get_html', methods=['GET'])
 def show_all_movies():
-    global movie_showings
-    return render_template('index.html', items=movie_showings)
+    global formatted_movies
+    get_all_movie_run_times()
+    return render_template('index.html', items=formatted_movies)
 
 # Run the app
 if __name__ == '__main__':
