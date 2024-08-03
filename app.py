@@ -334,7 +334,7 @@ def show_all_movies():
     formatted_movies = [handle_none_values(item) for item in formatted_movies]
 
     # Filter items to get the movies from the last 20 minutes
-    now = datetime.now()
+    now = datetime.now(tz="America/Los_Angeles")
     now_str = now.strftime('%H:%M')
     recent_items = [item for item in formatted_movies if convert_to_24hr(item['end_time']) >= (now - timedelta(minutes=20)).strftime('%H:%M')]
 
