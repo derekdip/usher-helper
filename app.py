@@ -334,7 +334,7 @@ def show_all_movies():
     get_all_movie_run_times()
     formatted_movies = [handle_none_values(item) for item in formatted_movies]
 
-    timezone = pytz.timezone('America/Los_Angeles') 
+    timezone = pytz.timezone('US/Pacific') 
     # Filter items to get the movies from the last 20 minutes
     now = datetime.now(tz=timezone)
     now_str = now.strftime('%H:%M')
