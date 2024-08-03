@@ -10,9 +10,10 @@
 <body>
     <div class="container mt-5">
         <h1 class="mb-4">Movie Showtimes</h1>
-        <div class="row">
-            {% for item in items %}
-                <div class="col-md-4 mb-3">
+        <button id="toggleButton" class="btn btn-secondary mb-3">Show All Movies</button>
+        <div class="row" id="movieContainer">
+            {% for item in items[:8] %}
+                <div class="col-md-4 mb-3 movie-item">
                     <div class="card h-100">
                         <div class="card-body">
                             <h5 class="card-title">{{ item.movie_name }}</h5>
@@ -26,5 +27,48 @@
             {% endfor %}
         </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const allItems = JSON.parse('{{ all_items | tojson | safe }}');
+            const itemsToShow = JSON.parse('{{ items | tojson | safe }}');
+            let showingAll = false;
+
+            function renderItems(items) {
+                const movieContainer = document.getElementById('movieContainer');
+                movieContainer.innerHTML = '';
+                items.forEach(item => {
+                    const col = document.createElement('div');
+                    col.classList.add('col-md-4', 'mb-3', 'movie-item');
+                    col.innerHTML = `
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h5 class="card-title">${item.movie_name}</h5>
+                                <p class="card-text"><strong>Auditorium:</strong> ${item.auditorium_number}</p>
+                                <p class="card-text"><strong>Start Time:</strong> ${item.start_time}</p>
+                                <p class="card-text"><strong>End Time:</strong> ${item.end_time}</p>
+                                <p class="card-text"><strong>Seats Unavailable:</strong> ${item.seats_unavailable}</p>
+                            </div>
+                        </div>
+                    `;
+                    movieContainer.appendChild(col);
+                });
+            }
+
+            const toggleButton = document.getElementById('toggleButton');
+            toggleButton.addEventListener('click', function() {
+                if (showingAll) {
+                    renderItems(itemsToShow.slice(0, 8));
+                    toggleButton.textContent = 'Show All Movies';
+                } else {
+                    renderItems(allItems);
+                    toggleButton.textContent = 'Show Less Movies';
+                }
+                showingAll = !showingAll;
+            });
+
+            // Initial render
+            renderItems(itemsToShow.slice(0, 8));
+        });
+    </script>
 </body>
 </html>

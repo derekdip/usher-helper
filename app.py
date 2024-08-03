@@ -320,11 +320,26 @@ def get_latest_auditorium_details():
     }
     return jsonify(data)
 
+def handle_none_values(item):
+    for key, value in item.items():
+        if value is None:
+            item[key] = ""
+    return item
+def convert_to_24hr(time_str):
+    return datetime.strptime(time_str, '%I:%M %p').strftime('%H:%M')
 @app.route('/api/get_html', methods=['GET'])
 def show_all_movies():
     global formatted_movies
     get_all_movie_run_times()
-    return render_template('index.html', items=formatted_movies)
+    formatted_movies = [handle_none_values(item) for item in formatted_movies]
+
+    # Filter items to get the movies from the last 20 minutes
+    now = datetime.now()
+    now_str = now.strftime('%H:%M')
+    recent_items = [item for item in formatted_movies if convert_to_24hr(item['end_time']) >= (now - timedelta(minutes=20)).strftime('%H:%M')]
+
+
+    return render_template('index.html', items=recent_items, all_items=formatted_movies)
 
 # Run the app
 if __name__ == '__main__':
