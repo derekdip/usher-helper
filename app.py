@@ -1,3 +1,4 @@
+import pytz
 import requests
 from bs4 import BeautifulSoup
 from collections import defaultdict
@@ -333,8 +334,9 @@ def show_all_movies():
     get_all_movie_run_times()
     formatted_movies = [handle_none_values(item) for item in formatted_movies]
 
+    timezone = pytz.timezone('America/Los_Angeles') 
     # Filter items to get the movies from the last 20 minutes
-    now = datetime.now(tz="America/Los_Angeles")
+    now = datetime.now(tz=timezone)
     now_str = now.strftime('%H:%M')
     recent_items = [item for item in formatted_movies if convert_to_24hr(item['end_time']) >= (now - timedelta(minutes=20)).strftime('%H:%M')]
 
