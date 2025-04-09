@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Name Input</title>
+    <style>
+        /* Add your CSS here */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        input[type="submit"] {
+            width: 85%;
+            padding: 12px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        input[type="radio"] {
+            margin-right: 10px;
+        }
+
+        /* Styling for radio buttons and labels */
+        .form-radio-group {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .form-radio-group label {
+            font-size: 16px;
+            font-weight: normal;
+            margin-right: 10px;
+        }
+
+        .form-radio-group input[type="radio"] {
+            margin-left: 10px;
+            margin-top: 10px;
+        }
+
+
+        #undergrad_year select {
+            width: 100%;
+            margin-bottom: 20px;
+            padding: 12px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+            color: #333;
+            transition: border-color 0.3s ease;
+        }
+
+        #undergrad_year select:hover {
+            border-color: #4CAF50;
+        }
+
+        #undergrad_year select:focus {
+            border-color: #4CAF50;
+            outline: none;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+        }
+
+
+        /* Submit Button Styling */
+        input[type="submit"] {
+            width: 85%;
+            padding: 12px;
+            border: none;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        .message {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        {% if message %}
+            <div class="message" style="color: {% if status == 'error' %}red{% else %}green{% endif %};">
+                <p>{{ message }}</p>
+            </div>
+        {% endif %}
+
+        {% if status != 'error' %}
+            <h1>Enter Your Name</h1>
+            <form action="{{ url_for('use_session_sign_in', sessionID=sessionID) }}" method="POST">
+                <div>
+                    <input type="text" id="first_name" name="first_name" autocomplete="given-name" placeholder="Enter your First name" required>
+                    <input type="text" id="last_name" name="last_name" autocomplete="family-name" placeholder="Enter your Last name" required>
+                </div>
+                <input type="submit" value="Submit">
+            </form>
+        {% endif %}
+    </div>
+
+</body>
+</html>

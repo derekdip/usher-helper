@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding-top: 50px;
+        }
+        #qr-code {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Scan to Sign Up</h1>
+    <img id="qr-code" src="/generate_qr_sign_up" alt="QR Code">
+    
+    <script>
+        // Function to fetch the latest QR code from the server
+        function updateQRCode() {
+            // Trigger an image reload by appending a timestamp to the image URL
+            document.getElementById('qr-code').src = '/generate_qr_sign_up?' + new Date().getTime();
+        }
+
+        // Periodically fetch and update the QR code every 2 seconds
+        setInterval(updateQRCode, 2000);  // Poll every 2 seconds (adjust as needed)
+    </script>
+</body>
+</html>

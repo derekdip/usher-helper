@@ -5,3 +5,12 @@ schedule==1.1.0
 apscheduler==3.9.1
 Gunicorn
 pytz
+psycopg2
+qrcode 
+flask-socketio
+Pillow
+google-api-python-client 
+google-auth-httplib2 
+google-auth-oauthlib 
+google-cloud
+

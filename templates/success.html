@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Success</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: green;
+        }
+
+        p {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #FF5722; /* Vibrant color for the button */
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .button:hover {
+            background-color: #FF7043; /* Slightly darker shade on hover */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Success!</h1>
+        <p>Session {{ sessionID }} was successfully used by {{ name }}.</p>
+        
+        <!-- Confetti Button -->
+        <button id="confettiButton" class="button">Celebrate with Confetti!</button>
+    </div>
+
+    <!-- Include canvas-confetti CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.4.0/dist/confetti.browser.min.js"></script>
+
+    <script>
+        // Function to trigger confetti
+        function triggerConfetti() {
+            // You can adjust the intensity and other properties as needed
+            confetti({
+                particleCount: 200,  // Number of confetti particles
+                spread: 90,          // How wide the confetti spreads
+                origin: { x: 0.5, y: 0.5 }, // Origin of the confetti effect (centered)
+                colors: ['#ff0', '#0f0', '#00f', '#f00', '#f0f'] // Color array for confetti
+            });
+        }
+
+        // Event listener for the button
+        document.getElementById('confettiButton').addEventListener('click', function() {
+            triggerConfetti(); // Trigger the confetti effect when button is clicked
+        });
+    </script>
+
+</body>
+</html>

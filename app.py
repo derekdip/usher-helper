@@ -1,352 +1,232 @@
-import pytz
-import requests
-from bs4 import BeautifulSoup
-from collections import defaultdict
-from datetime import datetime, timedelta
-import asyncio
-from flask import Flask, request, jsonify, render_template
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+from flask import Flask, jsonify, request, redirect, render_template, url_for, send_file
+import qrcode
+import io
 import logging
-import gc
+import psycopg2
+import uuid
+from collections import defaultdict
+from google_sheets import write_to_google_sheet
+import time
+import datetime
 
-
-
-all_movie_run_times=defaultdict(list)
-movie_showings=[]
-formatted_movies = []
-daily_scheduler:BackgroundScheduler = BackgroundScheduler()
-fresh_data_scheduler:BackgroundScheduler  = BackgroundScheduler()
-daily_scheduler_initialized = False
-
-def daily_task():
-    global all_movie_run_times
-    global movie_showings
-    global fresh_data_scheduler
-    if fresh_data_scheduler.running:
-        fresh_data_scheduler.remove_all_jobs()
-    else:
-        fresh_data_scheduler.start()
-
-    all_movie_run_times =  asyncio.run(get_all_movies_with_runtime())
-    movie_showings = asyncio.run(get_all_movie_showings())
-    for showing in movie_showings:
-        try:
-            formatted_time = parse_and_format_time(showing[4])
-            hour, minute = map(int, formatted_time.split(':'))
-            app.logger.info(formatted_time)
-            app.logger.info(hour)
-            app.logger.info(minute)
-            app.logger.info(showing[2])
-            fresh_data_scheduler.add_job(func = update_movie, trigger='cron',args=(showing[2],), hour=hour, minute=minute,timezone='America/Los_Angeles')
-        except:
-            app.logger.info("an error occurred parsing time for movie update scheduler")
-
-
-
-# Fetch the HTML content
-
-target_theatre_url= "https://www.cinemark.com/theatres/ca-los-angeles/cinemark-howard-hughes-los-angeles-and-xd"
-main_movie_url ="https://www.cinemark.com"
-# response = requests.get(main_movie_url+"/movies/now-playing")
-#response = requests.get(target_theatre_url)
-
-def default_arr():
-    return [0, 0]
-def default_tuple():
-    return ()
-    
-def get_movie_name(elements):
-    has_name_started=False
-    has_name_ended=False
-    movie_name=""
-
-    for element in elements:
-        str_name =str(element)
-        str_name = str_name.replace("&amp;","&")
-        for char in str(element):
-            if has_name_started and char=='<':
-                has_name_ended = True
-            if has_name_started==True and has_name_ended==False:
-                movie_name+=char
-            if char=='>':
-                has_name_started=True
-            if has_name_ended:
-                return movie_name
-    return movie_name
-def get_movie_hours_minutes(elements):
-    nums=[]
-    numsString=""
-    lastCharIsDigit=False
-    for element in elements:
-        for char in str(element):
-            if char.isdigit()==False and lastCharIsDigit==True:
-                nums.append(int(numsString))
-                numsString=""
-                lastCharIsDigit=False
-            if char.isdigit():
-                numsString+=char
-                lastCharIsDigit=True
-    return nums
-async def get_all_movies_with_runtime():
-    response = requests.get(main_movie_url+"/movies/now-playing")
-    movie_runtime_dict = defaultdict(default_arr)
-    if response.status_code!=200:
-        app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
-        return movie_runtime_dict
-    html_content = response.text
-    soup = BeautifulSoup(html_content, 'html.parser')
-    anchor_tags = soup.find_all('a', class_="movie-poster")
-    hrefs = [a.get('href') for a in anchor_tags if a.get('href')]
-    # limit =4
-    for movie_link in hrefs:
-        try:
-            response = requests.get(main_movie_url+str(movie_link))
-            if response.status_code == 200:
-                html_content = response.text
-                # Parse the HTML
-                soup = BeautifulSoup(html_content, 'html.parser')
-                movie_name_element = soup.find(class_='movie-detail-title')
-                movie_name= str(movie_name_element.text.strip())
-                app.logger.info(movie_name)
-                # Extract elements with a specific class
-                movie_runtime_element = soup.find_all(class_='movie-detail-runtime')
-                hours_minutes = get_movie_hours_minutes(movie_runtime_element)
-                movie_runtime_dict[movie_name]=hours_minutes
-                await asyncio.sleep(3)
-            else:
-                app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
-        except:
-            app.logger.info("error getting response, movie link: "+ str(movie_link))
-        finally:
-            response.close()
-            gc.collect()
-
-        # if limit<=0:
-        #     break
-        # limit-=1
-    return movie_runtime_dict
-        
-#start_time:str, duration:list
-def calculate_end_time(start_time_str:str, runtime:list):
-    # start_time_str = "11:15 am"
-    # runtime = [2, 30]  # 2 hours and 30 minutes
-
-    app.logger.info(start_time_str)
-    app.logger.info(runtime)
-    # Step 1: Parse the start time string into a datetime object
-    start_time = datetime.strptime(start_time_str, "%I:%M %p")
-
-    # Step 2: Create a timedelta object for the runtime
-    runtime_delta = timedelta(hours=runtime[0], minutes=runtime[1]+25)
-
-    # Step 3: Calculate the end time by adding the runtime to the start time
-    end_time = start_time + runtime_delta
-
-    # Step 4: Format the end time as a string if needed
-    end_time_str = end_time.strftime("%I:%M %p")
-
-    app.logger.info("Start Time:"+ start_time_str)
-    app.logger.info(f"Runtime: {runtime[0]} hours and {runtime[1]} minutes")
-    app.logger.info("End Time:"+ end_time_str)
-    return end_time_str
-
-
-def get_auditorium_details(path:str):
-    global all_movie_run_times
-    movie_name=""
-    auditorium_number="query failed"
-    start_time = "01:00"
-    run_time =[0,0]
-    end_time = '01:00 AM'
-    seats_unavailable = 0
-    try:
-        response = requests.get(main_movie_url+path)
-        if response.status_code!=200:
-            app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
-            return ['','query failed',path,0,"01:00 AM",[0,0],'01:00 AM']
-        html_content = response.text
-        soup = BeautifulSoup(html_content, 'html.parser')
-        try:
-            movie_name = str(soup.find(class_='seats-tickets-title').text.strip())
-        except:
-            app.logger.info("getting movie name failed")
-        try:
-            auditorium_number= str(soup.find(class_='auditoriumNumber').text.strip())
-        except:
-            app.logger.info("getting auditorium number failed")
-        try:
-            start_time = str(soup.find(class_='seats-tickets-time').text.strip())
-            app.logger.info(movie_name)
-            app.logger.info(all_movie_run_times[movie_name])
-            run_time = all_movie_run_times[movie_name]
-            end_time = calculate_end_time(start_time,run_time)
-        except:
-            app.logger.info("getting times failed")
-        try:
-            seat_map = soup.find(class_='seatMap')
-            seats_unavailable = len(seat_map.find_all(class_='seatUnavailable seatBlock'))
-        except:
-            app.logger.info("getting seats failed")
-        app.logger.info(start_time)
-        app.logger.info(movie_name)
-        app.logger.info(auditorium_number)
-        app.logger.info(seats_unavailable)
-    except:
-        app.logger.info("trouble with path: "+ path)
-    finally:
-            response.close()
-            gc.collect()
-    return [movie_name,auditorium_number,path,seats_unavailable,start_time,run_time,end_time]
-    
-
-def update_movie(path):
-    global movie_showings
-    latest_movie_showing_details = get_auditorium_details(path)
-    for i in range(len(movie_showings)):
-        if movie_showings[i][2]==path:
-            app.logger.info(movie_showings[i])
-            app.logger.info('updating latest')
-            app.logger.info(latest_movie_showing_details)
-            for j in range(len(movie_showings[i])):
-                movie_showings[i][j]=latest_movie_showing_details[j]
-    return latest_movie_showing_details
-
-def convert_time_to_datetime(time_str):
-    return datetime.strptime(time_str, "%I:%M %p")
-def parse_and_format_time(input_time, output_format="%H:%M"):
-    # Parse the input time string
-    dt = datetime.strptime(input_time, "%I:%M %p")
-    dt+= timedelta(minutes=19)
-    # Format the datetime object to the desired format
-    formatted_time = dt.strftime(output_format)
-    
-    return formatted_time
-
-async def get_all_movie_showings():
-    global all_movie_run_times
-    response = requests.get(target_theatre_url)
-    movies = []
-    if response.status_code!=200:
-        app.logger.info(f"Failed to retrieve the webpage. Status code: {response.status_code}")
-        return movies
-    html_content = response.text
-    soup = BeautifulSoup(html_content, 'html.parser')
-    anchor_tags = soup.find_all(class_='showtime-link')
-    hrefs = [a.get('href') for a in anchor_tags if a.get('href')]
-    # limit = 2
-    for showtime_path in hrefs:
-        path= str(showtime_path)
-        auditorium= get_auditorium_details(path)
-        movies.append(auditorium)
-        await asyncio.sleep(10)
-        # if limit<=0:
-        #     break
-        # limit-=1
-    sorted_times_list = sorted(movies, key=lambda x: convert_time_to_datetime(x[6]))
-    app.logger.info(sorted_times_list)
-    return sorted_times_list
-
-
-
-# --------app schedulers -------
-
-
-
-
-
-#-------end app schedulers ----------
-
+unique_ID_sign_up = {"status":"scanning","scan_count":0,"completed_count":0}
+unique_ID_sign_in = {"status":"scanning","scan_count":0,"completed_count":0}
+current_QR_UUID_sign_up = "initial_value"
+current_QR_UUID_sign_in = "initial_value"
 app = Flask(__name__)
 
 logging.basicConfig(level=logging.INFO)
+scan_cap = 10
 
-# Define a route for the default URL, which loads the homepage
-@app.route('/')
-def home():
-    return "Welcome to the Flask API!"
 
-# Define a route for an example API endpoint
-@app.route('/api/data', methods=['GET'])
-def get_all_movie_run_times():
-    # Example data
-    global movie_showings
-    global formatted_movies 
-    formatted_movies = []
-    for movie in movie_showings:
-        details ={
-            'movie_name':movie[0],
-            'auditorium_number':movie[1],
-            'url':movie[2],
-            'seats_unavailable':movie[3],
-            'start_time':movie[4],
-            'run_time':movie[5],
-            'end_time':movie[6]
-        }
-        formatted_movies.append(details)
+def generate_sign_up():
+    global current_QR_UUID_sign_up
+    sessionID = str(uuid.uuid4())
+    unique_ID_sign_up[sessionID]={"status":"scanning","scan_count":0,"completed_count":0}
     data = {
-        'message': formatted_movies,
+        'message': sessionID,
         'status': 'success'
     }
-    return jsonify(data)
-
-#Define a route for an API endpoint with parameters
-@app.route('/api/start/schedules', methods=['GET'])
-def get_data_with_name():
-    global daily_scheduler
-    job_count = len(daily_scheduler.get_jobs())
-    if job_count==0:
-        daily_task()
-        daily_scheduler.add_job(daily_task, CronTrigger(hour=3, minute=0,timezone='America/Los_Angeles'))
-        daily_scheduler.start()
-    return "hello"
-
-@app.route('/api/get_latest', methods=['GET'])
-def get_latest_auditorium_details():
-    path = request.args.get('path')
-    latest_movie_showing_details = update_movie(path)
-
+    current_QR_UUID_sign_up = sessionID
+    print(current_QR_UUID_sign_up)
+    return data
+def generate_sign_in():
+    global current_QR_UUID_sign_in
+    sessionID = str(uuid.uuid4())
+    unique_ID_sign_in[sessionID]={"status":"scanning","scan_count":0,"completed_count":0}
     data = {
-        'message':{
-            'movie_name':latest_movie_showing_details[0],
-            'auditorium_number':latest_movie_showing_details[1],
-            'url':latest_movie_showing_details[2],
-            'seats_unavailable':latest_movie_showing_details[3],
-            'start_time':latest_movie_showing_details[4],
-            'run_time':latest_movie_showing_details[5],
-            'end_time':latest_movie_showing_details[6]
-        }
-        ,
+        'message': sessionID,
         'status': 'success'
     }
-    return jsonify(data)
+    current_QR_UUID_sign_in = sessionID
+    print(current_QR_UUID_sign_in)
+    return data
 
-def handle_none_values(item):
-    for key, value in item.items():
-        if value is None:
-            item[key] = ""
-    return item
-def convert_to_24hr(time_str):
-    return datetime.strptime(time_str, '%I:%M %p').strftime('%H:%M')
-@app.route('/api/get_html', methods=['GET'])
-def show_all_movies():
-    global formatted_movies
-    get_all_movie_run_times()
-    formatted_movies = [handle_none_values(item) for item in formatted_movies]
-
-    timezone = pytz.timezone('US/Pacific') 
-    # Filter items to get the movies from the last 20 minutes
-    now = datetime.now(tz=timezone)
-    now_str = now.strftime('%H:%M')
-    recent_items = [item for item in formatted_movies if convert_to_24hr(item['end_time']) >= (now - timedelta(minutes=20)).strftime('%H:%M')]
+@app.route('/generateUnique/')
+def updateUniqueID():
+    return jsonify(generate_sign_up())
 
 
-    return render_template('index.html', items=recent_items, all_items=formatted_movies)
+@app.route('/useSession/sign_up/<sessionID>', methods=['GET', 'POST'])
+def use_session_sign_up(sessionID):
+    # Check if the session ID exists in the dictionary and is in "waiting" state
+    if(unique_ID_sign_up.get(sessionID)==None):
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signUp.html', message=message, status=status)
+    if sessionID in unique_ID_sign_up and unique_ID_sign_up[sessionID]["completed_count"] >= scan_cap:
+        del unique_ID_sign_up[sessionID]
+    if sessionID in unique_ID_sign_up and unique_ID_sign_up[sessionID]["completed_count"] < scan_cap:
+        if request.method == 'POST':
+            # Get the name from the form submission (POST request)
+            # Get the name from the form submission (POST request)
+            unique_ID_sign_up[sessionID]["completed_count"]+=1
+            first_name = request.form.get('first_name')  # Name is submitted via the form
+            last_name = request.form.get('last_name')
+            student_type = request.form.get('student_type')
+            year = request.form.get('year')
+            email = request.form.get('email')
+            current_timestamp = time.time()
+            datetime_object = datetime.datetime.fromtimestamp(current_timestamp)
+            write_to_google_sheet(["sign-up",str(first_name),str(last_name),str(email),str(student_type),str(year), str(datetime_object)])
+            # Redirect to the success page
+            return redirect(url_for('success', sessionID=sessionID, name=first_name))
+            #return render_template('signUp.html', message=message, status=status)
 
+        # If it's a GET request, show the form
+        return render_template('signUp.html', sessionID=sessionID, message=None, status=None)
+
+    else:
+        # If session ID is invalid or already used
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signUp.html', message=message, status=status)
+@app.route('/useSession/sign_in/<sessionID>', methods=['GET', 'POST'])
+def use_session_sign_in(sessionID):
+    # Check if the session ID exists in the dictionary and is in "waiting" state
+    if(unique_ID_sign_in.get(sessionID)==None):
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signIn.html', message=message, status=status)
+    if sessionID in unique_ID_sign_in and unique_ID_sign_in[sessionID]["completed_count"] >= scan_cap:
+        del unique_ID_sign_in[sessionID]
+    if sessionID in unique_ID_sign_in and unique_ID_sign_in[sessionID]["completed_count"] < scan_cap:
+        if request.method == 'POST':
+            # Get the name from the form submission (POST request)
+            # Get the name from the form submission (POST request)
+            unique_ID_sign_in[sessionID]["completed_count"]+=1
+            first_name = request.form.get('first_name')  # Name is submitted via the form
+            last_name = request.form.get('last_name')
+            current_timestamp = time.time()
+            datetime_object = datetime.datetime.fromtimestamp(current_timestamp)
+            write_to_google_sheet(["sign-in",str(first_name),str(last_name),str(datetime_object)])
+            # Redirect to the success page
+            return redirect(url_for('success', sessionID=sessionID, name=first_name))
+            #return render_template('signUp.html', message=message, status=status)
+
+        # If it's a GET request, show the form
+        return render_template('signIn.html', sessionID=sessionID, message=None, status=None)
+
+    else:
+        # If session ID is invalid or already used
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signIp.html', message=message, status=status)
+
+# Success screen route
+@app.route('/success')
+def success():
+    sessionID = request.args.get('sessionID')
+    name = request.args.get('name')
+
+    # You can display the session ID and name on the success screen
+    return render_template('success.html', sessionID=sessionID, name=name)
+    
+
+@app.route('/sign_up')
+def signUp():
+    return render_template('qrCodeSignUp.html')
+
+@app.route('/sign_in')
+def signIn():
+    return render_template('qrCodeSignIn.html')
+
+# Endpoint to generate the current QR code
+@app.route('/generate_qr_sign_up', methods=['GET'])
+def generate_qr_code_sign_up():
+    global current_QR_UUID_sign_up
+    
+    # Generate QR code based on the current data
+    img = qrcode.make(request.host_url+"scan/sign_up/"+current_QR_UUID_sign_up)
+    
+    # Save the image in memory and return it as a response
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    
+    return send_file(img_io, mimetype='image/png')
+
+# Endpoint to generate the current QR code
+@app.route('/generate_qr_sign_in', methods=['GET'])
+def generate_qr_code_sign_in():
+    global current_QR_UUID_sign_in
+    
+    # Generate QR code based on the current data
+    img = qrcode.make(request.host_url+"scan/sign_in/"+current_QR_UUID_sign_in)
+    
+    # Save the image in memory and return it as a response
+    img_io = io.BytesIO()
+    img.save(img_io, 'PNG')
+    img_io.seek(0)
+    
+    return send_file(img_io, mimetype='image/png')
+# Endpoint that simulates the user scanning the QR code and validating the URL
+@app.route('/scan/sign_in/<sessionID>', methods=['GET'])
+def scan_sign_in(sessionID):
+    global unique_ID_sign_in
+    if(unique_ID_sign_in.get(sessionID)==None):
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signIn.html', message=message, status=status)
+    if(unique_ID_sign_in[sessionID]["scan_count"] > scan_cap):
+        # Once the session ID is used, delete it from the dictionary
+        #del unique_ID_sign_in[sessionID]
+        generate_sign_up()
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signIn.html', message=message, status=status)
+    # Check if the sessionID exists and is still in the "waiting" state
+    if sessionID in unique_ID_sign_in and unique_ID_sign_in[sessionID]["scan_count"] < scan_cap:
+        unique_ID_sign_in[sessionID]["scan_count"]+=1
+        if(unique_ID_sign_in[sessionID]["scan_count"] == scan_cap):
+            #del unique_ID_sign_in[sessionID]
+            unique_ID_sign_in[sessionID]["status"]="submitting"
+            generate_sign_up()
+        # If it's a GET request, show the form to enter the name
+        return render_template('signIn.html', sessionID=sessionID, message=None, status=None)
+
+    else:
+        # If session ID is invalid or already used
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signUp.html', message=message, status=status)
+# Endpoint that simulates the user scanning the QR code and validating the URL
+@app.route('/scan/sign_up/<sessionID>', methods=['GET'])
+def scan_sign_up(sessionID):
+    global unique_ID_sign_up
+    if(unique_ID_sign_up.get(sessionID)==None):
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signUp.html', message=message, status=status)
+    if(unique_ID_sign_up[sessionID]["scan_count"] > scan_cap):
+        # Once the session ID is used, delete it from the dictionary
+        #del unique_ID_sign_up[sessionID]
+        generate_sign_up()
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signUp.html', message=message, status=status)
+    # Check if the sessionID exists and is still in the "waiting" state
+    if sessionID in unique_ID_sign_up and unique_ID_sign_up[sessionID]["scan_count"] < scan_cap:
+        unique_ID_sign_up[sessionID]["scan_count"]+=1
+        if(unique_ID_sign_up[sessionID]["scan_count"] == scan_cap):
+            #del unique_ID_sign_up[sessionID]
+            unique_ID_sign_up[sessionID]["status"]="submitting"
+            generate_sign_up()
+        # If it's a GET request, show the form to enter the name
+        return render_template('signUp.html', sessionID=sessionID, message=None, status=None)
+
+    else:
+        # If session ID is invalid or already used
+        message = "Session ID is invalid or already used."
+        status = "error"
+        return render_template('signUp.html', message=message, status=status)
+
+generate_sign_up()
+generate_sign_in()
 # Run the app
 if __name__ == '__main__':
     try:
-        daily_task()
-        app.run(port=8000, debug=True)
+        #daily_task()
+        app.run( host='127.0.0.1', port=8000, debug=True)
     except (KeyboardInterrupt, SystemExit):
         daily_scheduler.shutdown()
